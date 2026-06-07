@@ -1,0 +1,18 @@
+# === PRIVATNOST: ne objavljivati! ===
+# Evidencija sadrži osobne podatke svih studenata (imena, e-mailovi, ocjene)
+NUX_26_Evidencija.xlsx
+~$NUX_26_Evidencija.xlsx
+
+# Office privremene / lock datoteke
+~$*.docx
+~$*.pptx
+~$*.xlsx
+*.tmp
+
+# Tajni podaci / ključevi (za svaki slučaj — ne smiju na repo)
+*.pem
+*id_rsa*
+*.key
+
+# macOS smeće
+.DS_Store

@@ -1,0 +1,55 @@
+name: Izgradi PDF iz izvjesca
+
+# Pokrece se kad se promijeni Word izvjesce (i rucno preko "Run workflow").
+on:
+  push:
+    paths:
+      - "NUX26_TehnickoIzvjesce_16_Kuser_Ostrunic.docx"
+  workflow_dispatch:
+
+# Dozvola da workflow moze commitati natrag generirani PDF.
+permissions:
+  contents: write
+
+jobs:
+  docx-to-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repozitorija
+        uses: actions/checkout@v4
+
+      - name: Instaliraj LibreOffice i monospace fontove
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice fonts-dejavu fonts-liberation
+
+      - name: Mapiraj Consolas -> DejaVu Sans Mono (da kod ostane poravnat)
+        run: |
+          mkdir -p ~/.config/fontconfig
+          printf '%s\n' \
+            '<?xml version="1.0"?>' \
+            '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
+            '<fontconfig>' \
+            '  <match target="pattern"><test name="family"><string>Consolas</string></test><edit name="family" mode="assign" binding="strong"><string>DejaVu Sans Mono</string></edit></match>' \
+            '  <match target="pattern"><test name="family"><string>Courier New</string></test><edit name="family" mode="assign" binding="strong"><string>DejaVu Sans Mono</string></edit></match>' \
+            '</fontconfig>' > ~/.config/fontconfig/fonts.conf
+          fc-cache -f
+
+      - name: Pretvori DOCX u PDF (isto ime)
+        run: |
+          libreoffice --headless -env:UserInstallation=file:///tmp/lo \
+            --convert-to pdf --outdir . \
+            "NUX26_TehnickoIzvjesce_16_Kuser_Ostrunic.docx"
+          ls -la "NUX26_TehnickoIzvjesce_16_Kuser_Ostrunic.pdf"
+
+      - name: Commitaj PDF natrag u repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "NUX26_TehnickoIzvjesce_16_Kuser_Ostrunic.pdf"
+          if git diff --staged --quiet; then
+            echo "Nema promjene PDF-a, preskačem commit."
+          else
+            git commit -m "Auto: osvjezen PDF izvjesca [skip ci]"
+            git push
+          fi
