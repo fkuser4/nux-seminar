@@ -1,13 +1,11 @@
 name: Izgradi PDF iz izvjesca
 
-# Pokrece se kad se promijeni Word izvjesce (i rucno preko "Run workflow").
 on:
   push:
     paths:
       - "NUX26_TehnickoIzvjesce_16_Kuser_Ostrunic.docx"
   workflow_dispatch:
 
-# Dozvola da workflow moze commitati natrag generirani PDF.
 permissions:
   contents: write
 
@@ -18,22 +16,29 @@ jobs:
       - name: Checkout repozitorija
         uses: actions/checkout@v4
 
-      - name: Instaliraj LibreOffice i monospace fontove
+      - name: Instaliraj LibreOffice + metricki kompatibilne fontove
         run: |
+          sudo add-apt-repository -y multiverse || true
           sudo apt-get update
-          sudo apt-get install -y libreoffice fonts-dejavu fonts-liberation
+          sudo apt-get install -y libreoffice fontconfig \
+            fonts-crosextra-carlito fonts-crosextra-caladea \
+            fonts-dejavu fonts-liberation
+          # Pravi Microsoftovi core fontovi (Times New Roman, Courier New) - nije kriticno ako padne
+          echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ttf-mscorefonts-installer || echo "mscorefonts preskocen"
 
-      - name: Mapiraj Consolas -> DejaVu Sans Mono (da kod ostane poravnat)
+      - name: Mapiraj fontove na metricki kompatibilne (da se lom stranica poklopi s Wordom)
         run: |
-          mkdir -p ~/.config/fontconfig
           printf '%s\n' \
             '<?xml version="1.0"?>' \
             '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
             '<fontconfig>' \
+            '  <match target="pattern"><test name="family"><string>Calibri</string></test><edit name="family" mode="assign" binding="strong"><string>Carlito</string></edit></match>' \
+            '  <match target="pattern"><test name="family"><string>Aptos</string></test><edit name="family" mode="assign" binding="strong"><string>Carlito</string></edit></match>' \
+            '  <match target="pattern"><test name="family"><string>Cambria</string></test><edit name="family" mode="assign" binding="strong"><string>Caladea</string></edit></match>' \
             '  <match target="pattern"><test name="family"><string>Consolas</string></test><edit name="family" mode="assign" binding="strong"><string>DejaVu Sans Mono</string></edit></match>' \
-            '  <match target="pattern"><test name="family"><string>Courier New</string></test><edit name="family" mode="assign" binding="strong"><string>DejaVu Sans Mono</string></edit></match>' \
-            '</fontconfig>' > ~/.config/fontconfig/fonts.conf
-          fc-cache -f
+            '</fontconfig>' | sudo tee /etc/fonts/local.conf > /dev/null
+          sudo fc-cache -f
 
       - name: Pretvori DOCX u PDF (isto ime)
         run: |
